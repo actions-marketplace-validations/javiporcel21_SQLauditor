@@ -1,0 +1,20 @@
+name: Test SQLGuard Action
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  audit-example-sql:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Run SQLGuard
+        uses: javiporcel21/SQLauditor@v1.0.0
+        with:
+          path: examples
+          dialect: postgres
+          fail_on_high: "false"

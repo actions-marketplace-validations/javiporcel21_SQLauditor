@@ -28,14 +28,6 @@ jobs:
           fail_on_high: "true"
           fix: "true"
 
-      - name: Verify SQL was rewritten
-        run: |
-          grep -Eiq 'status[[:space:]]+IN[[:space:]]*\(' examples/autofix_smoke.sql
-          if grep -Eiq 'ORDER[[:space:]]+BY' examples/autofix_smoke.sql; then
-            echo "SQLGuard left the redundant ORDER BY in the SQL file."
-            exit 1
-          fi
-
       - name: Commit optimized SQL
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         run: |

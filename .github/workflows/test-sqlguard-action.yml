@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  audit-example-sql:
+  test-autofix:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -17,7 +17,10 @@ jobs:
       - name: Run SQLGuard
         uses: javiporcel21/SQLauditor@v1.0.2
         with:
-          path: examples
+          path: examples/autofix_smoke.sql
           dialect: postgres
           fail_on_high: "true"
           fix: "true"
+
+      - name: Verify SQL was rewritten
+        run: grep -Fq "status IN ('pending', 'paid')" examples/autofix_smoke.sql

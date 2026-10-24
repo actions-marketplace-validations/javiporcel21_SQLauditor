@@ -1,0 +1,29 @@
+name: Audit SQL test cases
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - examples/cases/**
+      - .github/workflows/audit-sql-cases.yml
+  pull_request:
+    paths:
+      - examples/cases/**
+      - .github/workflows/audit-sql-cases.yml
+  workflow_dispatch:
+
+jobs:
+  audit-cases:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Audit SQL examples
+        uses: javiporcel21/SQLauditor@v1.0.2
+        with:
+          path: examples/cases
+          dialect: postgres
+          fail_on_high: "false"
+          fix: "false"

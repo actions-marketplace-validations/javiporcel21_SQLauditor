@@ -175,6 +175,10 @@ jobs:
 
 Con `fix: "true"`, SQLGuard sobrescribe los archivos en la copia de trabajo del runner cuando aplica una regla de autofix compatible. La acción por sí sola no crea ningún commit ni sube esos cambios; un workflow puede añadir un paso separado para guardar el resultado en la rama. El workflow `Test SQLGuard Action` de este repositorio muestra ese flujo con `examples/autofix_smoke.sql`. Si la consulta no tiene optimizaciones compatibles, el workflow termina correctamente sin crear un commit.
 
+### Casos de prueba SQL
+
+La carpeta [`examples/cases`](./examples/cases/README.md) contiene consultas independientes para las reglas SQL_001 a SQL_005, incluidos los dos patrones de SQL_004 y un caso sin hallazgos. El workflow `Audit SQL test cases` las analiza en modo informativo: muestra los resultados, no falla por hallazgos HIGH y no modifica los archivos.
+
 ### Reglas Incluidas (Edición Community)
 
 | ID | Regla | Severidad | Ahorro Estimado | Autofix |

@@ -102,7 +102,7 @@ jobs:
           fix: "true"
 ```
 
-With `fix: "true"`, SQLGuard overwrites files with the optimized SQL in the runner's checkout; it does not commit or push those changes.
+With `fix: "true"`, SQLGuard overwrites files in the runner's checkout. The action itself does not commit or push the changes; a workflow can add a separate commit-and-push step if you want the optimized SQL saved to the branch. This repository's `Test SQLGuard Action` workflow demonstrates that flow for `examples/autofix_smoke.sql`.
 
 ### Rules (Community Edition)
 
@@ -173,7 +173,7 @@ jobs:
           fix: "true"
 ```
 
-Con `fix: "true"`, SQLGuard sobrescribe los archivos con el SQL optimizado en la copia de trabajo del runner; no crea ningún commit ni sube esos cambios.
+Con `fix: "true"`, SQLGuard sobrescribe los archivos con el SQL optimizado en la copia de trabajo del runner. La acción por sí sola no crea ningún commit ni sube esos cambios; un workflow puede añadir un paso separado para guardar el resultado en la rama. El workflow `Test SQLGuard Action` de este repositorio muestra ese flujo con `examples/autofix_smoke.sql`.
 
 ### Reglas Incluidas (Edición Community)
 

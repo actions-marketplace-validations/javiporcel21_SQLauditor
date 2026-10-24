@@ -4,8 +4,13 @@ on:
   push:
     branches:
       - main
+    paths:
+      - examples/autofix_smoke.sql
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   test-autofix:
@@ -23,4 +28,22 @@ jobs:
           fix: "true"
 
       - name: Verify SQL was rewritten
-        run: grep -Fq "status IN ('pending', 'paid')" examples/autofix_smoke.sql
+        run: |
+          grep -Fq "status IN ('pending', 'paid')" examples/autofix_smoke.sql
+          if grep -Fq "ORDER BY" examples/autofix_smoke.sql; then
+            echo "SQLGuard left the redundant ORDER BY in the SQL file."
+            exit 1
+          fi
+
+      - name: Commit optimized SQL
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add examples/autofix_smoke.sql
+          if git diff --cached --quiet; then
+            echo "SQLGuard made no changes to commit."
+            exit 0
+          fi
+          git commit -m "Apply SQLGuard autofix [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

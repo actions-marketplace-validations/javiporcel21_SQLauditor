@@ -102,7 +102,7 @@ jobs:
           fix: "true"
 ```
 
-With `fix: "true"`, SQLGuard overwrites files in the runner's checkout when a supported autofix applies. The action itself does not commit or push the changes; a workflow can add a separate commit-and-push step if you want the optimized SQL saved to the branch. This repository's `Test SQLGuard Action` workflow demonstrates that flow for `examples/autofix_smoke.sql`. If the query has no supported optimizations, the workflow succeeds without creating a commit.
+With `fix: "true"`, SQLGuard overwrites files in the runner's checkout when a supported autofix applies. If `fail_on_high: "true"` finds any HIGH issue, the audit fails without writing fixes to the source files. The action itself does not commit or push changes; a workflow can add a separate commit-and-push step to save successful optimizations to the branch. This repository's `Test SQLGuard Action` workflow demonstrates that flow for `examples/autofix_smoke.sql`. If the query has no supported optimizations, the workflow succeeds without creating a commit.
 
 ### Rules (Community Edition)
 
@@ -173,7 +173,7 @@ jobs:
           fix: "true"
 ```
 
-Con `fix: "true"`, SQLGuard sobrescribe los archivos en la copia de trabajo del runner cuando aplica una regla de autofix compatible. La acción por sí sola no crea ningún commit ni sube esos cambios; un workflow puede añadir un paso separado para guardar el resultado en la rama. El workflow `Test SQLGuard Action` de este repositorio muestra ese flujo con `examples/autofix_smoke.sql`. Si la consulta no tiene optimizaciones compatibles, el workflow termina correctamente sin crear un commit.
+Con `fix: "true"`, SQLGuard sobrescribe los archivos en la copia de trabajo del runner cuando aplica una regla de autofix compatible. Si `fail_on_high: "true"` encuentra algún problema HIGH, la auditoría falla sin escribir correcciones en los archivos fuente. La acción por sí sola no crea ningún commit ni sube cambios; un workflow puede añadir un paso separado para guardar en la rama las optimizaciones exitosas. El workflow `Test SQLGuard Action` de este repositorio muestra ese flujo con `examples/autofix_smoke.sql`. Si la consulta no tiene optimizaciones compatibles, el workflow termina correctamente sin crear un commit.
 
 ### Casos de prueba SQL
 

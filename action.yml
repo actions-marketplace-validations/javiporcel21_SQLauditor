@@ -39,4 +39,4 @@ runs:
         if [ "${{ inputs.fail_on_high }}" = "true" ]; then
           FLAGS="$FLAGS --fail-on-high"
         fi
-        sqlguard check "${{ inputs.path }}" $FLAGS
+        sqlguard "${{ inputs.path }}" $FLAGS

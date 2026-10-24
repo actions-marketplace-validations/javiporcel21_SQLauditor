@@ -94,7 +94,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: your-username/sqlguard@v0.1.0
+      - uses: javiporcel21/SQLauditor@v1.0.1
         with:
           path: "."
           dialect: "postgres"
@@ -162,7 +162,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: tu-usuario/sqlguard@v0.1.0
+      - uses: javiporcel21/SQLauditor@v1.0.1
         with:
           path: "."
           dialect: "postgres"

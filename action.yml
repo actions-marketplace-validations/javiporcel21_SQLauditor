@@ -1,0 +1,42 @@
+name: "SQLGuard - Static SQL Optimizer & FinOps Action"
+description: "Audita archivos SQL en tus Pull Requests, estima el ahorro de lectura y propone la consulta optimizada automáticamente."
+author: "SQLGuard Team"
+branding:
+  icon: "zap"
+  color: "green"
+
+inputs:
+  path:
+    description: "Ruta o carpeta donde buscar archivos .sql"
+    required: false
+    default: "."
+  dialect:
+    description: "Dialecto SQL (postgres, bigquery, snowflake, mysql)"
+    required: false
+    default: "postgres"
+  fail_on_high:
+    description: "Fallar el workflow si se detectan problemas de severidad HIGH (true/false)"
+    required: false
+    default: "true"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install sqlguard
+      shell: bash
+      run: |
+        pip install "${{ github.action_path }}"
+
+    - name: Run SQLGuard Audit
+      shell: bash
+      run: |
+        FLAGS="--dialect ${{ inputs.dialect }}"
+        if [ "${{ inputs.fail_on_high }}" = "true" ]; then
+          FLAGS="$FLAGS --fail-on-high"
+        fi
+        sqlguard check "${{ inputs.path }}" $FLAGS

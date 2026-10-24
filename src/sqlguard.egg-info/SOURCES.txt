@@ -1,0 +1,16 @@
+README.md
+pyproject.toml
+src/sqlguard/__init__.py
+src/sqlguard/cli.py
+src/sqlguard/engine.py
+src/sqlguard/models.py
+src/sqlguard/parser.py
+src/sqlguard.egg-info/PKG-INFO
+src/sqlguard.egg-info/SOURCES.txt
+src/sqlguard.egg-info/dependency_links.txt
+src/sqlguard.egg-info/entry_points.txt
+src/sqlguard.egg-info/requires.txt
+src/sqlguard.egg-info/top_level.txt
+src/sqlguard/rules/__init__.py
+src/sqlguard/rules/base.py
+src/sqlguard/rules/sql_001_select_star.py

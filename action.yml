@@ -34,7 +34,7 @@ runs:
     - name: Install sqlguard
       shell: bash
       run: |
-        pip install "${{ github.action_path }}"
+        python -m pip install --force-reinstall "${{ github.action_path }}"
 
     - name: Run SQLGuard Audit
       shell: bash

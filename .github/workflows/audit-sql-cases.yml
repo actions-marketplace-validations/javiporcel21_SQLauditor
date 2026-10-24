@@ -24,7 +24,7 @@ jobs:
         run: cp -R examples/cases "$RUNNER_TEMP/sqlguard-cases"
 
       - name: Audit SQL examples
-        uses: javiporcel21/SQLauditor@v1.0.2
+        uses: javiporcel21/SQLauditor@v1.0.3
         with:
           path: ${{ runner.temp }}/sqlguard-cases
           dialect: postgres

@@ -45,8 +45,10 @@ def check(
         if any(i.severity.value == "HIGH" for i in res.issues):
             has_high_severity = True
 
-        if fix and res.was_modified:
-            file_path.write_text(res.optimized_sql + "\n", encoding="utf-8")
+    if fix and not (fail_on_high and has_high_severity):
+        for file_path, res in zip(sql_files, results, strict=True):
+            if res.was_modified:
+                file_path.write_text(res.optimized_sql + "\n", encoding="utf-8")
 
     if json_output:
         print(json.dumps([r.model_dump() for r in results], indent=2, ensure_ascii=False))

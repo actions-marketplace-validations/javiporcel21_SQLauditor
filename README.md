@@ -94,7 +94,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: javiporcel21/SQLauditor@v1.0.2
+      - uses: javiporcel21/SQLauditor@v1.0.3
         with:
           path: "."
           dialect: "postgres"
@@ -165,7 +165,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: javiporcel21/SQLauditor@v1.0.2
+      - uses: javiporcel21/SQLauditor@v1.0.3
         with:
           path: "."
           dialect: "postgres"

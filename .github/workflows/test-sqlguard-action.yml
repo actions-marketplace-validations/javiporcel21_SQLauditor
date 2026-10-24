@@ -7,6 +7,9 @@ on:
     paths:
       - examples/autofix_smoke.sql
       - .github/workflows/test-sqlguard-action.yml
+      - action.yml
+      - src/sqlguard/cli.py
+      - tests/test_cli.py
   pull_request:
   workflow_dispatch:
 
@@ -21,22 +24,81 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run SQLGuard
-        uses: javiporcel21/SQLauditor@v1.0.2
+        uses: javiporcel21/SQLauditor@v1.0.3
         with:
           path: examples/autofix_smoke.sql
           dialect: postgres
           fail_on_high: "true"
           fix: "true"
 
+      - name: Verify SQL autofixes
+        run: |
+          grep -Eiq "status[[:space:]]+IN[[:space:]]*\\([[:space:]]*'PENDING',[[:space:]]*'PROCESSING'" examples/autofix_smoke.sql
+          if grep -Eiq 'ORDER[[:space:]]+BY' examples/autofix_smoke.sql; then
+            echo "SQLGuard left the redundant ORDER BY in the SQL file."
+            exit 1
+          fi
+
       - name: Commit optimized SQL
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        if: success() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add examples/autofix_smoke.sql
-          if git diff --cached --quiet; then
+          git add -- examples/autofix_smoke.sql
+          if git diff --cached --quiet -- examples/autofix_smoke.sql; then
             echo "SQLGuard made no changes to commit."
             exit 0
           fi
+          git diff --cached -- examples/autofix_smoke.sql
           git commit -m "Apply SQLGuard autofix [skip ci]"
           git push origin "HEAD:${GITHUB_REF_NAME}"
+
+  high-severity-is-blocked:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Prepare HIGH-severity SQL
+        run: |
+          cp examples/cases/SQL_003_year_function.sql "$RUNNER_TEMP/high.sql"
+          cp "$RUNNER_TEMP/high.sql" "$RUNNER_TEMP/high.original.sql"
+
+      - name: Expect SQLGuard to fail without writing fixes
+        id: audit-high
+        continue-on-error: true
+        uses: javiporcel21/SQLauditor@v1.0.3
+        with:
+          path: ${{ runner.temp }}/high.sql
+          dialect: postgres
+          fail_on_high: "true"
+          fix: "true"
+
+      - name: Verify HIGH blocks and leaves SQL unchanged
+        env:
+          AUDIT_OUTCOME: ${{ steps.audit-high.outcome }}
+        run: |
+          test "$AUDIT_OUTCOME" = "failure"
+          cmp "$RUNNER_TEMP/high.original.sql" "$RUNNER_TEMP/high.sql"
+
+  optimized-query-passes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Prepare optimized SQL
+        run: |
+          cp examples/cases/no_issue.sql "$RUNNER_TEMP/optimized.sql"
+          cp "$RUNNER_TEMP/optimized.sql" "$RUNNER_TEMP/optimized.original.sql"
+
+      - name: Audit optimized SQL
+        uses: javiporcel21/SQLauditor@v1.0.3
+        with:
+          path: ${{ runner.temp }}/optimized.sql
+          dialect: postgres
+          fail_on_high: "true"
+          fix: "true"
+
+      - name: Verify optimized SQL remains unchanged
+        run: cmp "$RUNNER_TEMP/optimized.original.sql" "$RUNNER_TEMP/optimized.sql"

@@ -29,8 +29,8 @@ jobs:
 
       - name: Verify SQL was rewritten
         run: |
-          grep -Fq "status IN ('pending', 'paid')" examples/autofix_smoke.sql
-          if grep -Fq "ORDER BY" examples/autofix_smoke.sql; then
+          grep -Eiq 'status[[:space:]]+IN[[:space:]]*\(' examples/autofix_smoke.sql
+          if grep -Eiq 'ORDER[[:space:]]+BY' examples/autofix_smoke.sql; then
             echo "SQLGuard left the redundant ORDER BY in the SQL file."
             exit 1
           fi

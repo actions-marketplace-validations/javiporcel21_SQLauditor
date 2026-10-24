@@ -15,8 +15,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run SQLGuard
-        uses: javiporcel21/SQLauditor@v1.0.1
+        uses: javiporcel21/SQLauditor@v1.0.2
         with:
           path: examples
           dialect: postgres
-          fail_on_high: "false"
+          fail_on_high: "true"
+          fix: "true"

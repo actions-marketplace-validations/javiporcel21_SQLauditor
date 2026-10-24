@@ -94,12 +94,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: javiporcel21/SQLauditor@v1.0.1
+      - uses: javiporcel21/SQLauditor@v1.0.2
         with:
           path: "."
           dialect: "postgres"
           fail_on_high: "true"
+          fix: "true"
 ```
+
+With `fix: "true"`, SQLGuard overwrites files with the optimized SQL in the runner's checkout; it does not commit or push those changes.
 
 ### Rules (Community Edition)
 
@@ -162,12 +165,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: javiporcel21/SQLauditor@v1.0.1
+      - uses: javiporcel21/SQLauditor@v1.0.2
         with:
           path: "."
           dialect: "postgres"
           fail_on_high: "true"
+          fix: "true"
 ```
+
+Con `fix: "true"`, SQLGuard sobrescribe los archivos con el SQL optimizado en la copia de trabajo del runner; no crea ningún commit ni sube esos cambios.
 
 ### Reglas Incluidas (Edición Community)
 

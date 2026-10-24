@@ -1,6 +1,6 @@
 # SQLGuard test cases
 
-Each `.sql` file is an independent case. Run the GitHub Actions workflow **Audit SQL test cases** to see the findings in the Actions log. This audit is report-only: it does not fail on HIGH findings and does not rewrite the examples.
+Each `.sql` file is an independent case. Run the GitHub Actions workflow **Audit SQL test cases** to see the findings and autofixed SQL in the Actions log. The workflow copies the examples to a temporary directory before enabling autofix, so the source cases in this folder remain unchanged. It does not fail on HIGH findings.
 
 | File | Expected result | Autofix |
 |---|---|---|

@@ -177,7 +177,7 @@ Con `fix: "true"`, SQLGuard sobrescribe los archivos en la copia de trabajo del 
 
 ### Casos de prueba SQL
 
-La carpeta [`examples/cases`](./examples/cases/README.md) contiene consultas independientes para las reglas SQL_001 a SQL_005, incluidos los dos patrones de SQL_004 y un caso sin hallazgos. El workflow `Audit SQL test cases` las analiza en modo informativo: muestra los resultados, no falla por hallazgos HIGH y no modifica los archivos.
+La carpeta [`examples/cases`](./examples/cases/README.md) contiene consultas independientes para las reglas SQL_001 a SQL_005, incluidos los dos patrones de SQL_004 y un caso sin hallazgos. El workflow `Audit SQL test cases` ejecuta el autofix sobre copias temporales para mostrar en los logs las versiones optimizadas; conserva los ejemplos originales, no falla por hallazgos HIGH y no sube las copias modificadas.
 
 ### Reglas Incluidas (Edición Community)
 

@@ -20,10 +20,13 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Copy SQL examples for autofix
+        run: cp -R examples/cases "$RUNNER_TEMP/sqlguard-cases"
+
       - name: Audit SQL examples
         uses: javiporcel21/SQLauditor@v1.0.2
         with:
-          path: examples/cases
+          path: ${{ runner.temp }}/sqlguard-cases
           dialect: postgres
           fail_on_high: "false"
-          fix: "false"
+          fix: "true"

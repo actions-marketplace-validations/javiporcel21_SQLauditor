@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Prepare SQL copy
         run: cp examples/autofix_smoke.sql "$RUNNER_TEMP/autofix.sql"
@@ -45,11 +45,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Prepare HIGH-severity SQL
         run: |
-          cp examples/cases/SQL_003_year_function.sql "$RUNNER_TEMP/high.sql"
+          cat > "$RUNNER_TEMP/high.sql" <<'SQL'
+          SELECT * FROM orders WHERE status = 'A' OR status = 'B';
+          SQL
           cp "$RUNNER_TEMP/high.sql" "$RUNNER_TEMP/high.original.sql"
 
       - name: Expect SQLGuard to fail without writing fixes
@@ -73,7 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Prepare optimized SQL
         run: |

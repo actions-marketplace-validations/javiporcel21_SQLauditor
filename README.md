@@ -41,11 +41,11 @@ Supported dialects are `postgres`, `bigquery`, `snowflake`, and `mysql`. Each fi
 |---|---|---:|---|
 | SQL_001 | `SELECT *` outside `COUNT(*)` | HIGH | No |
 | SQL_002 | `ORDER BY` in a CTE or subquery without a row limit | MEDIUM | Removes inner ordering |
-| SQL_003 | `YEAR(column) = YYYY` in a `WHERE` predicate | HIGH | Rewrites a simple column reference to a half-open date range |
+| SQL_003 | `YEAR(column) = YYYY` in a `WHERE` predicate | HIGH | No automatic rewrite; validate the column type and timezone |
 | SQL_004 | Join without `ON`/`USING`, or `LIKE`/`ILIKE` pattern starting with `%` | HIGH | No |
 | SQL_005 | Equality `OR` chain on the same column and literals | LOW | Rewrites to `IN` |
 
-Severity and impact are qualitative labels, not measured estimates. SQL_003 assumes a date-like column whose value and timezone semantics make the generated calendar-year range equivalent. SQL_002 removes ordering that does not define the outer query's result order. These checks cannot prove equivalence for every engine or application; inspect and test autofixes before merging them.
+Severity and impact are qualitative labels, not measured estimates. SQL_003 is diagnostic-only because SQLGuard cannot verify the column type or session timezone needed to prove that a calendar-year range is equivalent. SQL_002 removes ordering that does not define the outer query's result order. These checks cannot prove equivalence for every engine or application; inspect and test autofixes before merging them.
 
 ## GitHub Action
 
@@ -56,8 +56,8 @@ jobs:
   sqlguard:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: javiporcel21/SQLGuard@v1.0.4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: javiporcel21/SQLGuard@v1.0.5
         with:
           path: ./sql
           dialect: postgres
@@ -113,11 +113,11 @@ Los dialectos admitidos son `postgres`, `bigquery`, `snowflake` y `mysql`. Cada 
 |---|---|---:|---|
 | SQL_001 | `SELECT *` salvo `COUNT(*)` | HIGH | No |
 | SQL_002 | `ORDER BY` en CTE/subconsulta sin límite de filas | MEDIUM | Elimina el orden interno |
-| SQL_003 | `YEAR(columna) = YYYY` en `WHERE` | HIGH | Rango semiabierto para una referencia simple a columna |
+| SQL_003 | `YEAR(columna) = YYYY` en `WHERE` | HIGH | Sin autofix; valida el tipo de dato y la zona horaria |
 | SQL_004 | JOIN sin `ON`/`USING`, o `LIKE`/`ILIKE` que empieza por `%` | HIGH | No |
 | SQL_005 | Cadena de `OR` con igualdades de la misma columna | LOW | Reescribe como `IN` |
 
-La severidad y el impacto son etiquetas cualitativas, no estimaciones medidas. SQL_003 presupone que el tipo de dato y las reglas de zona horaria permiten expresar el mismo año con el rango generado. SQL_002 elimina un orden que no define el resultado exterior. Ninguna regla demuestra equivalencia para todos los motores y aplicaciones: revisa y prueba los autofixes antes de integrarlos.
+La severidad y el impacto son etiquetas cualitativas, no estimaciones medidas. SQL_003 solo informa: sin conocer el tipo de la columna y la zona horaria de la sesión, SQLGuard no puede asegurar que un rango de fechas sea equivalente. SQL_002 elimina un orden que no define el resultado exterior. Ninguna regla demuestra equivalencia para todos los motores y aplicaciones: revisa y prueba los autofixes antes de integrarlos.
 
 ### GitHub Action
 

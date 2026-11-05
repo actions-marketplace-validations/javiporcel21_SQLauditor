@@ -99,15 +99,13 @@ class TestSQL003NonSargableYear:
         rule_ids = [i.rule_id for i in result.issues]
         assert "SQL_003" in rule_ids
 
-    def test_year_function_autofix_rewrites_to_range(self):
+    def test_year_function_is_reported_without_autofix(self):
         sql = "SELECT id FROM orders WHERE YEAR(order_date) = 2026"
         result = analyze_and_optimize_sql(sql)
-        assert result.was_modified
-        optimized = result.optimized_sql.upper()
-        assert "2026-01-01" in result.optimized_sql
-        assert "2027-01-01" in result.optimized_sql
-        # No debe contener YEAR() en el SQL optimizado
-        assert "YEAR(" not in optimized
+        issue = next(issue for issue in result.issues if issue.rule_id == "SQL_003")
+        assert not issue.can_autofix
+        assert not result.was_modified
+        assert result.optimized_sql == result.original_sql
 
     def test_normal_where_no_issue(self):
         sql = "SELECT id FROM orders WHERE order_date >= '2026-01-01'"

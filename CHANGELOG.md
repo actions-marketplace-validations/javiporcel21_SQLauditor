@@ -12,6 +12,7 @@ Notable user-facing changes are recorded here. GitHub Action releases use semant
 - Keep SQL_003 diagnostic-only because equivalence depends on column type, timezone, and engine.
 - Clarify that no detected findings do not mean the query plan was evaluated.
 - Pin GitHub Actions to full commit SHAs and check the declared minimum dependency versions in CI.
+- Set the Typer and build lower bounds to releases compatible with modern Click and Python 3.10.
 
 ## v1.0.4 — 2026-11-05 (GitHub Action)
 

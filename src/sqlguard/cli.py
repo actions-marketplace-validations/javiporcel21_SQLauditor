@@ -1,4 +1,7 @@
 import json
+import os
+import stat
+import tempfile
 from pathlib import Path
 
 import typer
@@ -8,11 +11,104 @@ from rich.syntax import Syntax
 from rich.table import Table
 
 from sqlguard.engine import analyze_and_optimize_sql
+from sqlguard.models import OptimizationResult
 from sqlguard.parser import SQLParseException
 
 app = typer.Typer(help="sqlguard: análisis estático de consultas SQL con autofixes prudentes.")
 console = Console()
 error_console = Console(stderr=True)
+
+
+def _stage_text_file(path: Path, text: str, mode: int) -> Path:
+    descriptor, temp_name = tempfile.mkstemp(
+        prefix=f".{path.name}.sqlguard-", dir=path.parent
+    )
+    temp_path = Path(temp_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(text)
+        os.chmod(temp_path, mode)
+    except OSError:
+        try:
+            os.close(descriptor)
+        except OSError:
+            pass
+        temp_path.unlink(missing_ok=True)
+        raise
+    return temp_path
+
+
+def _stage_bytes_file(path: Path, content: bytes, mode: int) -> Path:
+    descriptor, temp_name = tempfile.mkstemp(
+        prefix=f".{path.name}.sqlguard-", dir=path.parent
+    )
+    temp_path = Path(temp_name)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(content)
+        os.chmod(temp_path, mode)
+    except OSError:
+        try:
+            os.close(descriptor)
+        except OSError:
+            pass
+        temp_path.unlink(missing_ok=True)
+        raise
+    return temp_path
+
+
+def _write_fixes_safely(files: list[Path], results: list[OptimizationResult]) -> None:
+    staged_outputs: dict[Path, Path] = {}
+    backups: dict[Path, Path] = {}
+    applied: list[Path] = []
+    preserved_backups: set[Path] = set()
+
+    try:
+        for file_path, result in zip(files, results, strict=True):
+            if not result.was_modified:
+                continue
+
+            target = file_path.resolve(strict=True)
+            if target in staged_outputs:
+                continue
+
+            original_bytes = target.read_bytes()
+            mode = stat.S_IMODE(target.stat().st_mode)
+            staged_outputs[target] = _stage_text_file(
+                target, result.optimized_sql + "\n", mode
+            )
+            backups[target] = _stage_bytes_file(target, original_bytes, mode)
+
+        for target in tuple(staged_outputs):
+            os.replace(staged_outputs[target], target)
+            del staged_outputs[target]
+            applied.append(target)
+    except OSError as exc:
+        rollback_errors: list[tuple[Path, OSError]] = []
+        for target in reversed(applied):
+            backup = backups[target]
+            try:
+                os.replace(backup, target)
+                del backups[target]
+            except OSError as rollback_exc:
+                preserved_backups.add(backup)
+                rollback_errors.append((target, rollback_exc))
+
+        if rollback_errors:
+            paths = ", ".join(str(backups[target]) for target, _ in rollback_errors)
+            raise OSError(
+                f"{exc}; no se pudieron restaurar algunos archivos. "
+                f"Se conservaron copias de respaldo en: {paths}"
+            ) from exc
+        raise
+    finally:
+        for temp_path in (*staged_outputs.values(), *backups.values()):
+            if temp_path in preserved_backups:
+                continue
+            try:
+                temp_path.unlink(missing_ok=True)
+            except OSError:
+                pass
 
 
 @app.command()
@@ -71,9 +167,7 @@ def check(
 
     if fix and not (fail_on_high and has_high_severity):
         try:
-            for file_path, res in zip(sql_files, results, strict=True):
-                if res.was_modified:
-                    file_path.write_text(res.optimized_sql + "\n", encoding="utf-8")
+            _write_fixes_safely(sql_files, results)
         except OSError as exc:
             error_console.print(f"[red]No se pudieron escribir los cambios: {exc}[/red]")
             raise typer.Exit(code=2) from exc
@@ -88,7 +182,8 @@ def check(
         console.rule(f"[bold cyan]Archivo: {res.file_path} ({res.dialect})[/bold cyan]")
         if not res.issues:
             console.print(
-                "[bold green]✔ Consulta óptima. Sin antipatrones detectados.[/bold green]\n"
+                "[bold green]✔ Sin hallazgos en las reglas incluidas. "
+                "No se ha evaluado el plan de ejecución.[/bold green]\n"
             )
             continue
 

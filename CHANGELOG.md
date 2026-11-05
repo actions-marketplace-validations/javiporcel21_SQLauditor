@@ -4,6 +4,16 @@ Notable user-facing changes are recorded here. GitHub Action releases use semant
 
 ## Unreleased
 
+## v1.0.5 — 2026-11-05 (GitHub Action)
+
+### Changed
+
+- Stage autofixes before replacing files and restore already-replaced files if a later write fails.
+- Keep SQL_003 diagnostic-only because equivalence depends on column type, timezone, and engine.
+- Clarify that no detected findings do not mean the query plan was evaluated.
+- Pin GitHub Actions to full commit SHAs and check the declared minimum dependency versions in CI.
+- Align the Typer and Rich lower bounds and avoid the yanked build 1.2.0 on Python 3.10.
+
 ## v1.0.4 — 2026-11-05 (GitHub Action)
 
 ### Added

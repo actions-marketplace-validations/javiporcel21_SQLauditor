@@ -9,7 +9,9 @@ class NonSargableYearRule(BaseRule):
     title = "Función YEAR() no sargable en WHERE"
     severity = Severity.HIGH
     impact = "high"
-    supports_autofix = True
+    # The analyzer has no schema or session-timezone information to prove that
+    # replacing YEAR(column) with calendar boundaries preserves semantics.
+    supports_autofix = False
 
     def _find_year_eq_pairs(self, ast: exp.Expression) -> list[exp.EQ]:
         """Encuentra nodos EQ donde un lado es YEAR(col) y el otro un literal de 4 dígitos."""
@@ -104,40 +106,8 @@ class NonSargableYearRule(BaseRule):
                     "Aplicar una función a la columna puede limitar el uso de algunos índices "
                     "o la poda de particiones. Un rango de fechas puede ser más adecuado, pero "
                     "la equivalencia depende del tipo de dato, la zona horaria y el motor. "
-                    "Revisa el autofix antes de aplicarlo."
+                    "SQLGuard no aplica una reescritura automática en este caso."
                 )
             )
 
         return issues
-
-    def autofix(self, ast: exp.Expression, dialect: str = "postgres") -> exp.Expression:
-        new_ast = ast.copy()
-
-        for eq_node in list(new_ast.find_all(exp.EQ)):
-            if not self._is_inside_where(eq_node):
-                continue
-            result = self._extract_column_and_year(eq_node)
-            if result is None:
-                continue
-
-            column, year_val = result
-            next_year = year_val + 1
-
-            # Construir predicado sargable: col >= 'YYYY-01-01' AND col < '{YYYY+1}-01-01'
-            start_date = f"{year_val}-01-01"
-            end_date = f"{next_year}-01-01"
-
-            range_predicate = exp.And(
-                this=exp.GTE(
-                    this=column.copy(),
-                    expression=exp.Literal.string(start_date),
-                ),
-                expression=exp.LT(
-                    this=column.copy(),
-                    expression=exp.Literal.string(end_date),
-                ),
-            )
-
-            eq_node.replace(range_predicate)
-
-        return new_ast

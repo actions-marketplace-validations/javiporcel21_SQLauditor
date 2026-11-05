@@ -1,20 +1,24 @@
 # Changelog
 
-Notable user-facing changes are recorded here. This project has not published a release from this changelog yet.
+Notable user-facing changes are recorded here. GitHub Action releases use semantic `v1.x` tags; the Python distribution version is maintained separately in `pyproject.toml`.
 
 ## Unreleased
 
+## v1.0.4 — 2026-11-05 (GitHub Action)
+
 ### Added
 
-- CI checks for tests across supported Python versions, Ruff, and source distribution/wheel builds.
-- Local composite Action smoke checks for autofixes, HIGH-severity blocking, and already-clean SQL.
-- Contributor instructions and an MIT license file.
+- CI across Python 3.10–3.14, package lint/build checks, and an installed-wheel CLI smoke test.
+- Contributor documentation and an MIT license.
 
 ### Changed
 
-- Reject SQL files containing multiple statements instead of silently analyzing only one.
-- Return clear CLI errors for unsupported dialects, missing paths, read failures, and write failures.
-- Treat rule impact as qualitative and describe findings without promising measured savings or guaranteed execution plans.
-- Preserve `ORDER BY` autofixes when a subquery uses `LIMIT`, `OFFSET`, `FETCH`, or `TOP`.
-- Clarify that SQLGuard is a static heuristic tool and that autofixes must be reviewed and validated.
-- Replace the unsupported `estimated_scan_reduction_pct` issue field and aggregate with qualitative `impact` metadata; clients reading JSON results should update accordingly.
+- Reject SQL files containing multiple statements rather than silently analyzing only one.
+- Preserve `ORDER BY` autofixes when a subquery has `LIMIT`, `OFFSET`, `FETCH`, or `TOP`.
+- Describe rule impact qualitatively without promising measured savings or guaranteed query plans.
+- Run action workflows against the local checkout with read-only permissions.
+
+### Fixed
+
+- Correct SQL_003's `WHERE` ancestry check using the SQLGlot parent chain.
+- Improve CLI validation, diagnostics, and file read/write error handling.

@@ -51,7 +51,7 @@ jobs:
             "sqlglot==25.0.0" \
             "pydantic==2.7.0" \
             "typer==0.26.0" \
-            "rich==13.7.0" \
+            "rich==13.8.0" \
             "pytest==8.0.0" \
             "ruff==0.6.0" \
             "build==1.2.1"

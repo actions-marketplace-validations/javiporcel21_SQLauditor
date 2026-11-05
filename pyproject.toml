@@ -26,7 +26,7 @@ dependencies = [
     "sqlglot>=25.0.0",
     "pydantic>=2.7.0",
     "typer>=0.26.0",
-    "rich>=13.7.0",
+    "rich>=13.8.0",
 ]
 
 [project.scripts]

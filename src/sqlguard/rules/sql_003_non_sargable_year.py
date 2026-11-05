@@ -8,7 +8,7 @@ class NonSargableYearRule(BaseRule):
     rule_id = "SQL_003"
     title = "Función YEAR() no sargable en WHERE"
     severity = Severity.HIGH
-    estimated_scan_reduction_pct = 75
+    impact = "high"
     supports_autofix = True
 
     def _find_year_eq_pairs(self, ast: exp.Expression) -> list[exp.EQ]:
@@ -16,6 +16,8 @@ class NonSargableYearRule(BaseRule):
         matches: list[exp.EQ] = []
 
         for eq_node in ast.find_all(exp.EQ):
+            if not self._is_inside_where(eq_node):
+                continue
             left, right = eq_node.this, eq_node.expression
             year_func = None
             literal_node = None
@@ -28,10 +30,22 @@ class NonSargableYearRule(BaseRule):
                 year_func = right
                 literal_node = left
 
-            if year_func is not None and literal_node is not None:
+            if (
+                year_func is not None
+                and literal_node is not None
+                and self._extract_column_and_year(eq_node)
+            ):
                 matches.append(eq_node)
 
         return matches
+
+    def _is_inside_where(self, node: exp.Expression) -> bool:
+        parent = node.parent
+        while parent is not None:
+            if isinstance(parent, exp.Where):
+                return True
+            parent = parent.parent
+        return False
 
     def _is_year_func(self, node: exp.Expression) -> bool:
         """Comprueba si el nodo es una función YEAR()."""
@@ -71,10 +85,12 @@ class NonSargableYearRule(BaseRule):
         else:  # exp.Anonymous
             column = year_func.expressions[0] if year_func.expressions else None
 
-        if column is None:
+        if not isinstance(column, exp.Column):
             return None
 
         year_val = int(literal_node.this)
+        if not 1 <= year_val <= 9998:
+            return None
         return (column, year_val)
 
     def check(self, ast: exp.Expression, dialect: str = "postgres") -> list[Issue]:
@@ -85,10 +101,10 @@ class NonSargableYearRule(BaseRule):
             issues.append(
                 self.build_issue(
                     "Se detectó YEAR(columna) = YYYY en la cláusula WHERE. "
-                    "Envolver una columna de fecha en la función YEAR() impide que el "
-                    "optimizador utilice índices B-Tree o la poda de particiones, "
-                    "forzando un Full Table Scan. Reescribe como un predicado de rango: "
-                    "columna >= 'YYYY-01-01' AND columna < '{YYYY+1}-01-01'."
+                    "Aplicar una función a la columna puede limitar el uso de algunos índices "
+                    "o la poda de particiones. Un rango de fechas puede ser más adecuado, pero "
+                    "la equivalencia depende del tipo de dato, la zona horaria y el motor. "
+                    "Revisa el autofix antes de aplicarlo."
                 )
             )
 
@@ -98,6 +114,8 @@ class NonSargableYearRule(BaseRule):
         new_ast = ast.copy()
 
         for eq_node in list(new_ast.find_all(exp.EQ)):
+            if not self._is_inside_where(eq_node):
+                continue
             result = self._extract_column_and_year(eq_node)
             if result is None:
                 continue

@@ -2,7 +2,7 @@
 
 ## 1. Alcance y Stack
 - Proyecto exclusivamente en Python 3.10+ para analizar y reescribir consultas SQL mediante `sqlglot`.
-- PROHIBIDO usar expresiones regulares (`re`) para analizar o modificar SQL. Todo debe hacerse mediante `sqlglot.parse_one` y manipulación de nodos `sqlglot.expressions` (`exp`).
+- PROHIBIDO usar expresiones regulares (`re`) para analizar o modificar SQL. Usa SQLGlot y manipula nodos `sqlglot.expressions` (`exp`); cuando se requiera validar que un archivo contiene una sola sentencia, `sqlglot.parse` puede comprobarlo antes de aceptar el único AST.
 - Modelos de datos estrictamente en Pydantic v2 (`BaseModel`, `Field`).
 
 ## 2. Arquitectura de Reglas
@@ -11,5 +11,5 @@
 - El método `autofix(self, ast: exp.Expression, dialect: str) -> exp.Expression` trabaja siempre sobre `ast.copy()` y devuelve el nuevo AST optimizado.
 
 ## 3. Verificación Obligatoria
-- Después de crear o editar cualquier archivo, ejecuta SIEMPRE en terminal: `pytest -q` y `ruff check .`
+- Después de crear o editar cualquier archivo, ejecuta SIEMPRE en terminal: `pytest -q`, `ruff check .` y `python -m build`.
 - Ninguna tarea está terminada si `pytest` falla.

@@ -1,5 +1,8 @@
 """Tests unitarios para las 5 reglas de sqlguard (SQL_001 a SQL_005)."""
+import pytest
+
 from sqlguard.engine import analyze_and_optimize_sql
+from sqlguard.parser import SQLParseException
 
 
 class TestSQL001SelectStar:
@@ -45,7 +48,11 @@ class TestSQL002RedundantOrderBy:
         optimized_upper = result.optimized_sql.upper()
         # Verificar que el ORDER BY fue eliminado de la CTE
         # Buscamos que no haya ORDER BY antes de la primera aparición de SELECT *
-        cte_part = optimized_upper.split("SELECT *")[0] if "SELECT *" in optimized_upper else optimized_upper
+        cte_part = (
+            optimized_upper.split("SELECT *")[0]
+            if "SELECT *" in optimized_upper
+            else optimized_upper
+        )
         # Puede haber variaciones, pero el ORDER BY no debe estar en la CTE
         assert "ORDER BY" not in cte_part or "LIMIT" in cte_part
 
@@ -59,6 +66,28 @@ class TestSQL002RedundantOrderBy:
         result = analyze_and_optimize_sql(sql)
         rule_ids = [i.rule_id for i in result.issues]
         assert "SQL_002" not in rule_ids
+
+    def test_cte_order_by_with_fetch_is_preserved(self):
+        sql = """
+        WITH cte AS (
+            SELECT id FROM users ORDER BY id FETCH FIRST 5 ROWS ONLY
+        )
+        SELECT id FROM cte
+        """
+        result = analyze_and_optimize_sql(sql, dialect="postgres")
+        assert "SQL_002" not in [issue.rule_id for issue in result.issues]
+        assert not result.was_modified
+
+    def test_cte_order_by_with_top_is_preserved(self):
+        sql = """
+        WITH cte AS (
+            SELECT TOP 5 id FROM users ORDER BY id
+        )
+        SELECT id FROM cte
+        """
+        result = analyze_and_optimize_sql(sql, dialect="tsql")
+        assert "SQL_002" not in [issue.rule_id for issue in result.issues]
+        assert not result.was_modified
 
 
 class TestSQL003NonSargableYear:
@@ -85,6 +114,21 @@ class TestSQL003NonSargableYear:
         result = analyze_and_optimize_sql(sql)
         rule_ids = [i.rule_id for i in result.issues]
         assert "SQL_003" not in rule_ids
+
+    def test_year_outside_where_is_not_reported_or_rewritten(self):
+        result = analyze_and_optimize_sql("SELECT YEAR(order_date) FROM orders")
+        assert "SQL_003" not in [issue.rule_id for issue in result.issues]
+        assert not result.was_modified
+
+    def test_year_with_non_column_expression_is_not_autofixed(self):
+        sql = "SELECT id FROM orders WHERE YEAR(order_date + INTERVAL '1' DAY) = 2026"
+        result = analyze_and_optimize_sql(sql)
+        assert "SQL_003" not in [issue.rule_id for issue in result.issues]
+        assert not result.was_modified
+
+    def test_multiple_statements_are_rejected_instead_of_ignored(self):
+        with pytest.raises(SQLParseException, match="una sentencia por archivo"):
+            analyze_and_optimize_sql("SELECT 1; SELECT * FROM secrets")
 
 
 class TestSQL004CartesianAndWildcard:

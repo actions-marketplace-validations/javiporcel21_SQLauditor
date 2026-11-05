@@ -1,6 +1,6 @@
-name: "SQLGuard - Static SQL Optimizer & FinOps Action"
-description: "Audita archivos SQL en tus Pull Requests, estima el ahorro de lectura y propone la consulta optimizada automáticamente."
-author: "SQLGuard Team"
+name: "SQLGuard - Static SQL checks"
+description: "Audita archivos SQL de forma estática y aplica autofixes compatibles bajo demanda."
+author: "Javier Porcel"
 branding:
   icon: "zap"
   color: "green"
@@ -33,17 +33,24 @@ runs:
 
     - name: Install sqlguard
       shell: bash
+      env:
+        SQLGUARD_ACTION_PATH: ${{ github.action_path }}
       run: |
-        python -m pip install --force-reinstall "${{ github.action_path }}"
+        python -m pip install --force-reinstall "$SQLGUARD_ACTION_PATH"
 
     - name: Run SQLGuard Audit
       shell: bash
+      env:
+        SQLGUARD_PATH: ${{ inputs.path }}
+        SQLGUARD_DIALECT: ${{ inputs.dialect }}
+        SQLGUARD_FAIL_ON_HIGH: ${{ inputs.fail_on_high }}
+        SQLGUARD_FIX: ${{ inputs.fix }}
       run: |
-        FLAGS="--dialect ${{ inputs.dialect }}"
-        if [ "${{ inputs.fail_on_high }}" = "true" ]; then
-          FLAGS="$FLAGS --fail-on-high"
+        args=(--dialect "$SQLGUARD_DIALECT")
+        if [ "$SQLGUARD_FAIL_ON_HIGH" = "true" ]; then
+          args+=(--fail-on-high)
         fi
-        if [ "${{ inputs.fix }}" = "true" ]; then
-          FLAGS="$FLAGS --fix"
+        if [ "$SQLGUARD_FIX" = "true" ]; then
+          args+=(--fix)
         fi
-        sqlguard "${{ inputs.path }}" $FLAGS
+        sqlguard "$SQLGUARD_PATH" "${args[@]}"

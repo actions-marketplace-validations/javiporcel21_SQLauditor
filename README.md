@@ -1,227 +1,128 @@
-# SQLGuard ⚡
+# SQLGuard
 
-### Static SQL Optimizer & FinOps Rewriter via AST
+[![Quality](https://github.com/javiporcel21/SQLGuard/actions/workflows/quality.yml/badge.svg)](https://github.com/javiporcel21/SQLGuard/actions/workflows/quality.yml)
 
-> Catch expensive SQL antipatterns **before they hit production**. Zero database connections required.
+**Static SQL checks with cautious AST-based autofixes.** SQLGuard analyzes SQL locally with [SQLGlot](https://github.com/tobymao/sqlglot). It does not connect to a database or execute queries.
 
----
+> SQLGuard reports heuristics. It does not inspect schemas, query plans, table statistics, or cloud billing, so it cannot promise a performance improvement or cost saving. Review rewritten SQL and validate it against your database before deployment.
 
-## 🌍 English
+## Requirements and installation
 
-### The Problem
-
-A single `SELECT *` on BigQuery can scan **terabytes** of data you don't need. A `YEAR(col) = 2026` in your WHERE clause **kills every index** on that column. These mistakes cost real money — and most teams only discover them after the bill arrives.
-
-### The Solution
-
-**SQLGuard** analyzes your SQL files statically via AST (Abstract Syntax Tree) using [sqlglot](https://github.com/tobymao/sqlglot). No database connection needed. It detects antipatterns, estimates the scan/CPU reduction, and **automatically rewrites** your queries to be optimal.
-
-### Before & After
-
-**Before** (your original query):
-```sql
-WITH recent_orders AS (
-    SELECT id, customer_id, order_date, status, total_amount
-    FROM sales.orders
-    WHERE YEAR(order_date) = 2026
-      AND (status = 'PAID' OR status = 'SHIPPED')
-    ORDER BY order_date DESC
-)
-SELECT *
-FROM recent_orders
-WHERE customer_name LIKE '%garcia';
-```
-
-**After** (automatically rewritten by SQLGuard):
-```sql
-WITH recent_orders AS (
-  SELECT
-    id,
-    customer_id,
-    order_date,
-    status,
-    total_amount
-  FROM sales.orders
-  WHERE
-    order_date >= '2026-01-01'
-    AND order_date < '2027-01-01'
-    AND status IN ('PAID', 'SHIPPED')
-)
-SELECT
-  *
-FROM recent_orders
-WHERE
-  customer_name LIKE '%garcia'
-```
-
-**What changed:**
-- `YEAR(order_date) = 2026` → sargable range `order_date >= '2026-01-01' AND order_date < '2027-01-01'` (index & partition friendly)
-- `status = 'PAID' OR status = 'SHIPPED'` → `status IN ('PAID', 'SHIPPED')` (simpler execution plan)
-- `ORDER BY order_date DESC` removed from CTE (useless without LIMIT)
-
-### Quick Start
+SQLGuard requires Python 3.10 or later. Install it from a local checkout:
 
 ```bash
-# Install
-pip install .
+python -m pip install .
+```
 
-# Analyze a single file
+## Use
+
+```bash
+# Check one SQL file
 sqlguard examples/bad_query.sql --dialect postgres
 
-# Analyze an entire folder
+# Recursively check SQL files in a directory
 sqlguard ./sql/ --dialect bigquery
 
-# Auto-fix files in place
-sqlguard ./sql/ --fix
-
-# JSON output for CI/CD
+# Emit JSON for CI
 sqlguard ./sql/ --json
 
-# Fail CI if HIGH severity issues found
+# Apply supported autofixes in place
+sqlguard ./sql/ --fix
+
+# Return exit code 1 when HIGH findings exist
 sqlguard ./sql/ --fail-on-high
 ```
 
-### GitHub Action Integration
+Supported dialects are `postgres`, `bigquery`, `snowflake`, and `mysql`. Each file must contain exactly one SQL statement; files with multiple statements are rejected instead of silently skipping later statements. Parse, path, encoding, and write errors exit with status 2. `--fail-on-high` exits with status 1. When combined with `--fix`, no files are written if any HIGH finding is present. `--json` writes results to standard output and diagnostics to standard error.
 
-Add SQLGuard to any repository in **5 lines of YAML**:
+## Rules
+
+| ID | Finding | Severity | Autofix |
+|---|---|---:|---|
+| SQL_001 | `SELECT *` outside `COUNT(*)` | HIGH | No |
+| SQL_002 | `ORDER BY` in a CTE or subquery without a row limit | MEDIUM | Removes inner ordering |
+| SQL_003 | `YEAR(column) = YYYY` in a `WHERE` predicate | HIGH | Rewrites a simple column reference to a half-open date range |
+| SQL_004 | Join without `ON`/`USING`, or `LIKE`/`ILIKE` pattern starting with `%` | HIGH | No |
+| SQL_005 | Equality `OR` chain on the same column and literals | LOW | Rewrites to `IN` |
+
+Severity and impact are qualitative labels, not measured estimates. SQL_003 assumes a date-like column whose value and timezone semantics make the generated calendar-year range equivalent. SQL_002 removes ordering that does not define the outer query's result order. These checks cannot prove equivalence for every engine or application; inspect and test autofixes before merging them.
+
+## GitHub Action
 
 ```yaml
-# .github/workflows/sql-audit.yml
-name: SQL Audit
+name: SQL audit
 on: [pull_request]
 jobs:
   sqlguard:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: javiporcel21/SQLauditor@v1.0.3
+      - uses: javiporcel21/SQLGuard@v1.0.4
         with:
-          path: "."
-          dialect: "postgres"
+          path: ./sql
+          dialect: postgres
           fail_on_high: "true"
-          fix: "true"
+          fix: "false"
 ```
 
-With `fix: "true"`, SQLGuard overwrites files in the runner's checkout when a supported autofix applies. If `fail_on_high: "true"` finds any HIGH issue, the audit fails without writing fixes to the source files. The action itself does not commit or push changes; a workflow can add a separate commit-and-push step to save successful optimizations to the branch. This repository's `Test SQLGuard Action` workflow demonstrates that flow for `examples/autofix_smoke.sql`. If the query has no supported optimizations, the workflow succeeds without creating a commit.
-
-### Rules (Community Edition)
-
-| ID | Rule | Severity | Estimated Savings | Autofix |
-|---|---|---|---|---|
-| SQL_001 | `SELECT *` in production queries | HIGH | ~60% scan reduction | Manual |
-| SQL_002 | `ORDER BY` in CTE/subquery without `LIMIT` | MEDIUM | ~25% CPU savings | ✔ Auto |
-| SQL_003 | `YEAR(col) = YYYY` non-sargable predicate | HIGH | ~75% scan reduction | ✔ Auto |
-| SQL_004 | Cartesian product (JOIN without ON) / Leading wildcard LIKE | HIGH | ~80% scan reduction | Manual |
-| SQL_005 | `col = 'A' OR col = 'B'` chains → `IN` | LOW | ~15% plan simplification | ✔ Auto |
-
-### Supported Dialects
-
-PostgreSQL, BigQuery, Snowflake, MySQL — powered by [sqlglot](https://github.com/tobymao/sqlglot).
-
----
-
-## 🌍 Español
-
-### El Problema
-
-Un solo `SELECT *` en BigQuery puede escanear **terabytes** de datos innecesarios. Un `YEAR(col) = 2026` en tu WHERE **anula todos los índices** de esa columna. Estos errores cuestan dinero real — y la mayoría de equipos solo los descubren cuando llega la factura.
-
-### La Solución
-
-**SQLGuard** analiza tus archivos SQL de forma estática mediante AST (Árbol de Sintaxis Abstracta) usando [sqlglot](https://github.com/tobymao/sqlglot). Sin conexión a base de datos. Detecta antipatrones, estima la reducción de escaneo/CPU, y **reescribe automáticamente** tus consultas para que sean óptimas.
-
-### Inicio Rápido
-
-```bash
-# Instalar
-pip install .
-
-# Analizar un archivo
-sqlguard examples/bad_query.sql --dialect postgres
-
-# Analizar una carpeta entera
-sqlguard ./sql/ --dialect bigquery
-
-# Auto-corregir archivos
-sqlguard ./sql/ --fix
-
-# Salida JSON para CI/CD
-sqlguard ./sql/ --json
-
-# Fallar CI si hay problemas HIGH
-sqlguard ./sql/ --fail-on-high
-```
-
-### Integración como GitHub Action
-
-Añade SQLGuard a cualquier repositorio en **5 líneas de YAML**:
-
-```yaml
-# .github/workflows/sql-audit.yml
-name: SQL Audit
-on: [pull_request]
-jobs:
-  sqlguard:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: javiporcel21/SQLauditor@v1.0.3
-        with:
-          path: "."
-          dialect: "postgres"
-          fail_on_high: "true"
-          fix: "true"
-```
-
-Con `fix: "true"`, SQLGuard sobrescribe los archivos en la copia de trabajo del runner cuando aplica una regla de autofix compatible. Si `fail_on_high: "true"` encuentra algún problema HIGH, la auditoría falla sin escribir correcciones en los archivos fuente. La acción por sí sola no crea ningún commit ni sube cambios; un workflow puede añadir un paso separado para guardar en la rama las optimizaciones exitosas. El workflow `Test SQLGuard Action` de este repositorio muestra ese flujo con `examples/autofix_smoke.sql`. Si la consulta no tiene optimizaciones compatibles, el workflow termina correctamente sin crear un commit.
-
-### Casos de prueba SQL
-
-La carpeta [`examples/cases`](./examples/cases/README.md) contiene consultas independientes para las reglas SQL_001 a SQL_005, incluidos los dos patrones de SQL_004 y un caso sin hallazgos. El workflow `Audit SQL test cases` ejecuta el autofix sobre copias temporales para mostrar en los logs las versiones optimizadas; conserva los ejemplos originales, no falla por hallazgos HIGH y no sube las copias modificadas.
-
-### Reglas Incluidas (Edición Community)
-
-| ID | Regla | Severidad | Ahorro Estimado | Autofix |
-|---|---|---|---|---|
-| SQL_001 | `SELECT *` en consultas de producción | HIGH | ~60% reducción de escaneo | Manual |
-| SQL_002 | `ORDER BY` en CTE/subconsulta sin `LIMIT` | MEDIUM | ~25% ahorro de CPU | ✔ Auto |
-| SQL_003 | `YEAR(col) = YYYY` predicado no sargable | HIGH | ~75% reducción de escaneo | ✔ Auto |
-| SQL_004 | Producto cartesiano (JOIN sin ON) / LIKE con comodín inicial | HIGH | ~80% reducción de escaneo | Manual |
-| SQL_005 | Cadenas `col = 'A' OR col = 'B'` → `IN` | LOW | ~15% simplificación de plan | ✔ Auto |
-
----
-
-## 🚀 Pro Roadmap
-
-| Feature | Description | Status |
-|---|---|---|
-| **Metadata Catalog Integration** | Connect to dbt, Alation, or DataHub catalogs to calculate actual cost in EUR/USD per query | Planned |
-| **Auto-commit in Pull Requests** | Automatically push optimized SQL as a commit suggestion in PRs | Planned |
-| **Cost Estimation Engine** | Estimate BigQuery/Snowflake cost savings in real currency based on table metadata | Planned |
-| **Custom Rule SDK** | Define your own rules with a simple Python API | Planned |
-| **VS Code Extension** | Real-time SQL optimization feedback in the editor | Planned |
-| **Slack/Teams Notifications** | Alert channels when expensive queries are detected in PRs | Planned |
-
----
+With `fix: "true"`, the Action writes supported autofixes into the runner's checkout. The Action does not commit or push changes. Pin the Action to a reviewed immutable commit SHA in production workflows.
 
 ## Development
 
 ```bash
-# Setup
 python -m venv .venv
-.venv\Scripts\Activate.ps1  # Windows
-# source .venv/bin/activate  # Linux/Mac
-
-pip install -e .
-pip install pytest ruff
-
-# Run tests
+# Activate the environment, then:
+python -m pip install -e ".[dev]"
 pytest -q
-
-# Lint
 ruff check .
+python -m build
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md), [CHANGELOG.md](CHANGELOG.md), and the SQL examples in [`examples/cases`](examples/cases/README.md).
 
 ## License
 
-MIT
+SQLGuard is distributed under the MIT License. See [LICENSE](LICENSE).
+
+---
+
+## Español
+
+**Análisis estático de SQL con autofixes prudentes basados en AST.** SQLGuard analiza SQL localmente con [SQLGlot](https://github.com/tobymao/sqlglot). No se conecta a bases de datos ni ejecuta consultas.
+
+> SQLGuard ofrece heurísticas. No inspecciona esquemas, planes de ejecución, estadísticas de tablas ni facturación cloud, por lo que no puede prometer mejoras concretas de rendimiento o coste. Revisa el SQL reescrito y valídalo en tu base de datos antes de desplegarlo.
+
+### Requisitos, instalación y uso
+
+Requiere Python 3.10 o posterior. Desde una copia local del repositorio:
+
+```bash
+python -m pip install .
+sqlguard examples/bad_query.sql --dialect postgres
+sqlguard ./sql/ --dialect bigquery
+sqlguard ./sql/ --json
+sqlguard ./sql/ --fix
+sqlguard ./sql/ --fail-on-high
+```
+
+Los dialectos admitidos son `postgres`, `bigquery`, `snowflake` y `mysql`. Cada archivo debe contener exactamente una sentencia SQL; los archivos con varias sentencias se rechazan para evitar ignorar consultas. Los errores de sintaxis, ruta, codificación y escritura terminan con código 2. `--fail-on-high` termina con código 1. Si se combina con `--fix`, no se escriben cambios cuando hay algún hallazgo HIGH. `--json` escribe resultados en la salida estándar y diagnósticos en la salida de error.
+
+### Reglas
+
+| ID | Hallazgo | Severidad | Autofix |
+|---|---|---:|---|
+| SQL_001 | `SELECT *` salvo `COUNT(*)` | HIGH | No |
+| SQL_002 | `ORDER BY` en CTE/subconsulta sin límite de filas | MEDIUM | Elimina el orden interno |
+| SQL_003 | `YEAR(columna) = YYYY` en `WHERE` | HIGH | Rango semiabierto para una referencia simple a columna |
+| SQL_004 | JOIN sin `ON`/`USING`, o `LIKE`/`ILIKE` que empieza por `%` | HIGH | No |
+| SQL_005 | Cadena de `OR` con igualdades de la misma columna | LOW | Reescribe como `IN` |
+
+La severidad y el impacto son etiquetas cualitativas, no estimaciones medidas. SQL_003 presupone que el tipo de dato y las reglas de zona horaria permiten expresar el mismo año con el rango generado. SQL_002 elimina un orden que no define el resultado exterior. Ninguna regla demuestra equivalencia para todos los motores y aplicaciones: revisa y prueba los autofixes antes de integrarlos.
+
+### GitHub Action
+
+La configuración en inglés anterior también funciona en repositorios en español. Con `fix: "true"`, la Action modifica archivos en el checkout del runner, pero no crea commits ni los sube al repositorio. En producción, fija la Action a un SHA revisado.
+
+### Desarrollo y licencia
+
+Consulta [CONTRIBUTING.md](CONTRIBUTING.md), el [historial de cambios](CHANGELOG.md) y los casos de [`examples/cases`](examples/cases/README.md). SQLGuard se distribuye bajo licencia MIT; consulta [LICENSE](LICENSE).

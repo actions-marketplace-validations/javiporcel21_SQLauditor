@@ -33,7 +33,7 @@ class OrToInRewriteRule(BaseRule):
     rule_id = "SQL_005"
     title = "Cadena de OR reescribible como IN"
     severity = Severity.LOW
-    estimated_scan_reduction_pct = 15
+    impact = "low"
     supports_autofix = True
 
     def _find_or_chains(self, ast: exp.Expression) -> list[exp.Or]:
@@ -79,8 +79,8 @@ class OrToInRewriteRule(BaseRule):
                 self.build_issue(
                     "Se detectó una cadena de condiciones OR comparando la misma columna "
                     "contra distintos literales (ej. col = 'A' OR col = 'B'). "
-                    "Reescribir como col IN ('A', 'B') simplifica el plan de ejecución "
-                    "del optimizador y mejora la legibilidad de la consulta."
+                    "Reescribirla como col IN ('A', 'B') puede mejorar la legibilidad. "
+                    "El optimizador puede generar planes equivalentes para ambas formas."
                 )
             )
 

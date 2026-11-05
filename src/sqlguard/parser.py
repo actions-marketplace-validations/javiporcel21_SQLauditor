@@ -8,12 +8,24 @@ class SQLParseException(Exception):
 
 
 def parse_sql(sql: str, dialect: str = "postgres") -> exp.Expression:
-    """Convierte texto SQL en un árbol AST de sqlglot."""
+    """Parsea una única sentencia SQL; nunca descarta sentencias posteriores."""
     try:
-        ast = sqlglot.parse_one(sql, read=dialect)
-        return ast
+        statements = [
+            statement
+            for statement in sqlglot.parse(sql, read=dialect)
+            if statement is not None
+        ]
     except ParseError as e:
         raise SQLParseException(f"Error de sintaxis SQL ({dialect}): {e}") from e
+
+    if not statements:
+        raise SQLParseException("No se encontró ninguna sentencia SQL.")
+    if len(statements) > 1:
+        raise SQLParseException(
+            f"Se encontraron {len(statements)} sentencias. "
+            "Actualmente se admite una sentencia por archivo."
+        )
+    return statements[0]
 
 
 def format_sql(ast: exp.Expression, dialect: str = "postgres") -> str:

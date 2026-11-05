@@ -8,7 +8,7 @@ class SelectStarRule(BaseRule):
     rule_id = "SQL_001"
     title = "Evitar SELECT * en consultas de producción"
     severity = Severity.HIGH
-    estimated_scan_reduction_pct = 60
+    impact = "high"
     supports_autofix = False
 
     def check(self, ast: exp.Expression, dialect: str = "postgres") -> list[Issue]:
@@ -21,9 +21,10 @@ class SelectStarRule(BaseRule):
 
             issues.append(
                 self.build_issue(
-                    "Se detectó 'SELECT *'. En motores columnares (BigQuery, Snowflake, Parquet) "
-                    "e índices cubrientes de Postgres, leer todas las columnas multiplica el I/O "
-                    "y el coste por TB escaneado. Especifica explícitamente las columnas necesarias."
+                    "Se detectó 'SELECT *'. Puede procesar columnas que la consulta no necesita, "
+                    "especialmente en almacenes columnares. El efecto depende del motor "
+                    "y del plan; "
+                    "especifica las columnas necesarias cuando sea posible."
                 )
             )
             break

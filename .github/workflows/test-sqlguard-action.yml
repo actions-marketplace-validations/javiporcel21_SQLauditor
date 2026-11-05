@@ -2,62 +2,50 @@ name: Test SQLGuard Action
 
 on:
   push:
-    branches:
-      - main
     paths:
-      - examples/autofix_smoke.sql
-      - .github/workflows/test-sqlguard-action.yml
       - action.yml
-      - src/sqlguard/cli.py
-      - tests/test_cli.py
+      - pyproject.toml
+      - src/sqlguard/**
+      - examples/autofix_smoke.sql
+      - examples/cases/**
+      - .github/workflows/test-sqlguard-action.yml
   pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  test-autofix:
+  autofix-smoke:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Run SQLGuard
-        uses: javiporcel21/SQLauditor@v1.0.3
+      - name: Prepare SQL copy
+        run: cp examples/autofix_smoke.sql "$RUNNER_TEMP/autofix.sql"
+
+      - name: Run local SQLGuard Action
+        uses: ./
         with:
-          path: examples/autofix_smoke.sql
+          path: ${{ runner.temp }}/autofix.sql
           dialect: postgres
           fail_on_high: "true"
           fix: "true"
 
       - name: Verify SQL autofixes
         run: |
-          grep -Eiq "status[[:space:]]+IN[[:space:]]*\\([[:space:]]*'PENDING',[[:space:]]*'PROCESSING'" examples/autofix_smoke.sql
-          if grep -Eiq 'ORDER[[:space:]]+BY' examples/autofix_smoke.sql; then
+          grep -Eiq "status[[:space:]]+IN[[:space:]]*\\([[:space:]]*'PENDING',[[:space:]]*'PROCESSING'" "$RUNNER_TEMP/autofix.sql"
+          if grep -Eiq 'ORDER[[:space:]]+BY' "$RUNNER_TEMP/autofix.sql"; then
             echo "SQLGuard left the redundant ORDER BY in the SQL file."
             exit 1
           fi
-
-      - name: Commit optimized SQL
-        if: success() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- examples/autofix_smoke.sql
-          if git diff --cached --quiet -- examples/autofix_smoke.sql; then
-            echo "SQLGuard made no changes to commit."
-            exit 0
-          fi
-          git diff --cached -- examples/autofix_smoke.sql
-          git commit -m "Apply SQLGuard autofix [skip ci]"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
 
   high-severity-is-blocked:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Prepare HIGH-severity SQL
         run: |
@@ -67,7 +55,7 @@ jobs:
       - name: Expect SQLGuard to fail without writing fixes
         id: audit-high
         continue-on-error: true
-        uses: javiporcel21/SQLauditor@v1.0.3
+        uses: ./
         with:
           path: ${{ runner.temp }}/high.sql
           dialect: postgres
@@ -85,7 +73,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Prepare optimized SQL
         run: |
@@ -93,7 +81,7 @@ jobs:
           cp "$RUNNER_TEMP/optimized.sql" "$RUNNER_TEMP/optimized.original.sql"
 
       - name: Audit optimized SQL
-        uses: javiporcel21/SQLauditor@v1.0.3
+        uses: ./
         with:
           path: ${{ runner.temp }}/optimized.sql
           dialect: postgres

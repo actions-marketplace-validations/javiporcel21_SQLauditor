@@ -9,7 +9,7 @@ class BaseRule(ABC):
     rule_id: str = "SQL_000"
     title: str = "Base Rule"
     severity: Severity = Severity.MEDIUM
-    estimated_scan_reduction_pct: int = 10
+    impact: str = "moderate"
     supports_autofix: bool = False
 
     @abstractmethod
@@ -27,6 +27,6 @@ class BaseRule(ABC):
             title=self.title,
             severity=self.severity,
             description=custom_desc,
-            estimated_scan_reduction_pct=self.estimated_scan_reduction_pct,
+            impact=self.impact,
             can_autofix=self.supports_autofix,
         )

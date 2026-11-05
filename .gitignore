@@ -26,6 +26,7 @@ Thumbs.db
 
 # pytest
 .pytest_cache/
+.venvpytest-tmp/
 
 # ruff
 .ruff_cache/

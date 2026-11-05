@@ -8,7 +8,7 @@ class CartesianAndWildcardRule(BaseRule):
     rule_id = "SQL_004"
     title = "Producto cartesiano o LIKE con comodín inicial"
     severity = Severity.HIGH
-    estimated_scan_reduction_pct = 80
+    impact = "high"
     supports_autofix = False
 
     def check(self, ast: exp.Expression, dialect: str = "postgres") -> list[Issue]:
@@ -27,10 +27,9 @@ class CartesianAndWildcardRule(BaseRule):
             if not has_on and not has_using:
                 issues.append(
                     self.build_issue(
-                        "Se detectó un JOIN sin cláusula ON ni USING, lo que produce un "
-                        "producto cartesiano accidental (M × N filas). Esto genera una "
-                        "explosión combinatoria que puede saturar la memoria y el CPU del "
-                        "motor SQL. Añade siempre una condición de join explícita."
+                        "Se detectó un JOIN sin cláusula ON ni USING, que puede producir un "
+                        "producto cartesiano. Puede ser intencional; confirma que la cardinalidad "
+                        "resultante es la esperada."
                     )
                 )
 
@@ -44,10 +43,9 @@ class CartesianAndWildcardRule(BaseRule):
                     issues.append(
                         self.build_issue(
                             f"Se detectó LIKE/ILIKE con comodín inicial ('{pattern_val}'). "
-                            "Un patrón que empieza con '%' impide el uso de cualquier índice "
-                            "B-Tree estándar, forzando un escaneo secuencial completo de la "
-                            "tabla. Considera usar índices GIN/trigram, búsqueda full-text "
-                            "o reestructurar la consulta."
+                            "Un patrón con comodín inicial suele impedir una búsqueda por prefijo "
+                            "con un índice B-Tree estándar. El plan depende del motor y de los "
+                            "índices disponibles; revisa EXPLAIN si necesitas confirmar el coste."
                         )
                     )
 

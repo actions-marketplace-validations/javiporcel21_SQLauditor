@@ -1,6 +1,6 @@
 # SQLGuard
 
-[![Quality](https://github.com/javiporcel21/SQLauditor/actions/workflows/quality.yml/badge.svg)](https://github.com/javiporcel21/SQLauditor/actions/workflows/quality.yml)
+[![Quality](https://github.com/javiporcel21/SQLGuard/actions/workflows/quality.yml/badge.svg)](https://github.com/javiporcel21/SQLGuard/actions/workflows/quality.yml)
 
 **Static SQL checks with cautious AST-based autofixes.** SQLGuard analyzes SQL locally with [SQLGlot](https://github.com/tobymao/sqlglot). It does not connect to a database or execute queries.
 
@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: javiporcel21/SQLauditor@v1.0.4
+      - uses: javiporcel21/SQLGuard@v1.0.4
         with:
           path: ./sql
           dialect: postgres

@@ -36,8 +36,8 @@ sqlguard = "sqlguard.cli:app"
 dev = ["pytest>=8.0", "ruff>=0.6", "build>=1.2"]
 
 [project.urls]
-Repository = "https://github.com/javiporcel21/SQLauditor"
-Issues = "https://github.com/javiporcel21/SQLauditor/issues"
+Repository = "https://github.com/javiporcel21/SQLGuard"
+Issues = "https://github.com/javiporcel21/SQLGuard/issues"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
